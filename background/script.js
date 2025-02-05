@@ -10,6 +10,7 @@ let CustomSessionDuration = 3600;
 let DebugLogs = false;
 let RoleArns = {};
 let LF = '\n';
+let HttpPostUrl = '';
 
 // When this background process starts, load variables from chrome storage 
 // from saved Extension Options
@@ -363,16 +364,33 @@ function addProfileToCredentials(credentials, profileName, AccessKeyId, SecretAc
 // It should be saved to Chrome's Download directory automatically.
 function outputDocAsDownload(docContent) {
   if (DebugLogs) {
-    console.log('DEBUG: Now going to download credentials file. Document content:');
+    console.log('DEBUG: Processing credentials. Document content:');
     console.log(docContent);
   }
-  // Triggers download of the generated file
-  chrome.downloads.download({ 
-    url: 'data:text/plain,' + docContent, 
-    filename: FileName, 
-    conflictAction: 'overwrite', 
-    saveAs: false
-  });
+  if (HttpPostUrl && HttpPostUrl.trim() !== "") {
+    if (DebugLogs) {
+      console.log('DEBUG: Posting credentials to ' + HttpPostUrl);
+    }
+    fetch(HttpPostUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: docContent
+    })
+    .then(response => {
+      console.log("INFO: Credentials posted successfully.");
+    })
+    .catch(error => {
+      console.error("ERROR: Posting credentials failed", error);
+    });
+  } else {
+    // Triggers download of the generated file
+    chrome.downloads.download({ 
+      url: 'data:text/plain,' + docContent, 
+      filename: FileName, 
+      conflictAction: 'overwrite', 
+      saveAs: false
+    });
+  }
 }
 
 
@@ -412,26 +430,19 @@ function keepServiceRunning() {
   
 
 function loadItemsFromStorage() {
-  //default values for the options
   chrome.storage.sync.get({
     FileName: 'credentials',
     ApplySessionDuration: 'yes',
     CustomSessionDuration: '3600',
     DebugLogs: 'no',
-    RoleArns: {}
+    RoleArns: {},
+    HttpPostUrl: ''
   }, function (items) {
     FileName = items.FileName;
     CustomSessionDuration = items.CustomSessionDuration;
-    if (items.ApplySessionDuration == "no") {
-      ApplySessionDuration = false;
-    } else {
-      ApplySessionDuration = true;
-    }
-    if (items.DebugLogs == "no") {
-      DebugLogs = false;
-    } else {
-      DebugLogs = true;
-    }
+    ApplySessionDuration = (items.ApplySessionDuration !== "no");
+    DebugLogs = (items.DebugLogs !== "no");
     RoleArns = items.RoleArns;
+    HttpPostUrl = items.HttpPostUrl;
   });
 }
