@@ -11,6 +11,7 @@ let DebugLogs = false;
 let RoleArns = {};
 let LF = '\n';
 let HttpPostUrl = '';
+let LatestRole = "";
 
 // When this background process starts, load variables from chrome storage 
 // from saved Extension Options
@@ -236,6 +237,8 @@ async function onBeforeRequestEvent(details) {
   // Write credentials to file
   console.log('Generate AWS tokens file.');
   outputDocAsDownload(credentials);
+  // After saving (or posting) credentials, update the status indicator.
+  updateStatusIndicator();
 }
 
 
@@ -253,7 +256,7 @@ async function assumeRoleWithSAML(roleClaimValue, SAMLAssertion, SessionDuration
   // Extract both regex patterns from the roleClaimValue (which is a SAMLAssertion attribute)
   RoleArn = roleClaimValue.match(reRole)[0];
   PrincipalArn = roleClaimValue.match(rePrincipal)[0];
-  
+
   if (DebugLogs) {
     console.log('RoleArn: ' + RoleArn);
     console.log('PrincipalArn: ' + PrincipalArn);
@@ -291,6 +294,7 @@ async function assumeRoleWithSAML(roleClaimValue, SAMLAssertion, SessionDuration
       console.log('DEBUG: AssumeRoleWithSAML response:');
       console.log(keys);
     }
+    LatestRole = RoleArn;
     return keys;
   }
   catch (error) {
@@ -393,7 +397,11 @@ function outputDocAsDownload(docContent) {
   }
 }
 
-
+function updateStatusIndicator() {
+  let timestamp = Date.now();
+  chrome.storage.local.set({ lastRole: LatestRole, lastTimestamp: timestamp });
+  chrome.runtime.sendMessage({ action: "updateStatus", latestRole: LatestRole, timestamp: timestamp });
+}
 
 // This Listener receives messages from options.js and popup.js
 // Received messages are meant to affect the background process.
