@@ -201,7 +201,7 @@ async function onBeforeRequestEvent(details) {
   try {
     let result = await assumeRoleWithSAML(attributes_role, SAMLAssertion, sessionduration);
     let keys = result.keys;
-    sessionduration = result.sessionduration;
+    sessionduration = result.SessionDuration;
 
     // Append AWS credentials keys as string to 'credentials' variable
     credentials = addProfileToCredentials(credentials, "default", keys.access_key_id,
